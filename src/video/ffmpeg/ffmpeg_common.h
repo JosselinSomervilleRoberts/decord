@@ -298,7 +298,7 @@ class AVIOBytesContext {
         }
 
         // Perform the copy operation safely
-        memcpy(buf, bd->ptr, buf_size);
+        memcpy(buf, bd->ptr, read_size);
         bd->ptr  += buf_size;
         bd->size -= buf_size;
         return buf_size;
