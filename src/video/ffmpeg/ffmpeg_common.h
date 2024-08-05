@@ -276,6 +276,10 @@ class AVIOBytesContext {
 
     static int read(void *opaque, uint8_t *buf, int buf_size) {
         struct AVIOBufferData *bd = (struct AVIOBufferData *)opaque;
+        buf_size = FFMIN(buf_size, bd->size);
+        if (!buf_size)
+            return AVERROR_EOF;
+        
         // Perform bounds checking
         if (bd->size < 0 || bd->size > MAX_ALLOWED_SIZE) {
             // Invalid size in the buffer, handle error
