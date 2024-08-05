@@ -45,6 +45,9 @@ extern "C" {
 #include <dmlc/thread_local.h>
 #include <dlpack/dlpack.h>
 
+#define MAX_ALLOWED_SIZE 1073741824 // 1 GB
+
+
 namespace decord {
 namespace ffmpeg {
 using NDArray = runtime::NDArray;
@@ -273,10 +276,28 @@ class AVIOBytesContext {
 
     static int read(void *opaque, uint8_t *buf, int buf_size) {
         struct AVIOBufferData *bd = (struct AVIOBufferData *)opaque;
-        buf_size = FFMIN(buf_size, bd->size);
-        if (!buf_size)
-            return AVERROR_EOF;
-        /* copy internal buffer data to buf */
+        // Perform bounds checking
+        if (bd->size < 0 || bd->size > MAX_ALLOWED_SIZE) {
+            // Invalid size in the buffer, handle error
+            // Optionally log an error message or throw an exception
+            return AVERROR(EINVAL);  // Return an appropriate error code
+        }
+
+        // Ensure buf_size is within the available buffer size
+        size_t available_size = static_cast<size_t>(bd->size);
+        size_t read_size = std::min(static_cast<size_t>(buf_size), available_size);
+
+        // Check if there is no data to read
+        if (read_size <= 0) {
+            return AVERROR_EOF;  // End of file or no data
+        }
+
+        // Ensure that buf and bd->ptr are valid
+        if (buf == nullptr || bd->ptr == nullptr) {
+            return AVERROR(EINVAL);  // Return an error code indicating invalid arguments
+        }
+
+        // Perform the copy operation safely
         memcpy(buf, bd->ptr, buf_size);
         bd->ptr  += buf_size;
         bd->size -= buf_size;
